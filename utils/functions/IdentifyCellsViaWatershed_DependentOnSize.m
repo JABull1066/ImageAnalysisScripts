@@ -5,31 +5,16 @@ function [ bw3, centroids ] = IdentifyCellsViaWatershed_DependentOnSize( mask, i
 % See https://blogs.mathworks.com/steve/2013/11/19/watershed-transform-question-from-tech-support/
 bw = mask;
 
-% Default
-% excludeArea = 1000;
-% assume cell area is 20 mum x 20 mum = 400 mum
-% Exclude anything smaller than 10 mum x 10 mum
 lowerSizeThreshold = cellDiameterRangeInMicrons(1);
 upperSizeThreshold = cellDiameterRangeInMicrons(2);
 
 % Cells smaller than this will be removed
 excludeArea = round(lowerSizeThreshold * MPP * lowerSizeThreshold * MPP);
 bw2 = bwareaopen(bw, excludeArea);
-% bw2 = ~bwareaopen(~bw, 10);
-% imshow(bw2)
 
 D = -bwdist(~bw);
-% imshow(D,[])
-
-% Ld = watershed(D);
-% imshow(label2rgb(Ld))
-
-% bw2 = bw;
-% bw2(Ld == 0) = 0;
-% imshow(bw2)
 
 mask2 = imextendedmin(D,2);
-% imshowpair(bw,mask2,'blend')
 
 D2 = imimposemin(D,mask2);
 Ld2 = watershed(D2);
@@ -37,19 +22,17 @@ bw3 = bw;
 bw3(Ld2 == 0) = 0;
 % Also remove cells excluded by the small area removal in bw2
 bw3(bw2 == 0) = 0;
-% imshow(bw3)
 
 % Cells larger than this will be split into two
 divideArea = round(upperSizeThreshold * MPP * upperSizeThreshold * MPP);
 
 
 % For any labels which are too large, we will split the corresponding pixel
-% in two. Find longest axis and divide perpendicularly (assuming by this
-% point all connected components are roughly elliptical
+% in two. Find longest axis of surrounding ellipse and divide perpendicularly
 allRegionsSorted = false;
 counter = 0;
 lastTime = intmax;
-while ~allRegionsSorted && (counter < 100)
+while ~allRegionsSorted && (counter < 100) % Allow up to 100 iterations
     counter = counter + 1;
     disp(['Iteration ',num2str(counter),' of shrinking regions'])
     badRegions = 0;
@@ -63,17 +46,15 @@ while ~allRegionsSorted && (counter < 100)
                 allRegionsSorted = false;
                 badRegions = badRegions + 1;
                 badsizes(badRegions) = 0.5*s(k).Area;
-%                 disp(k)
             end
             % Want all pixels of bw3
             % ...laying along minor axis
             % ....inside L == i
-            %        point1 =
             % Minor axes
             xbar = s(k).Centroid(1);
             ybar = s(k).Centroid(2);
             
-            b = 2*s(k).MinorAxisLength/2; % extra factor of 1.5 to ensure "cell" is fully contained within ellipse
+            b = 2*s(k).MinorAxisLength/2; % extra factor of 2 to ensure "cell" is fully contained within ellipse
             
             theta = pi*s(k).Orientation/180;
             angle = theta;
@@ -115,9 +96,7 @@ while ~allRegionsSorted && (counter < 100)
         end
     end
     disp([num2str(badRegions),' large regions remaining'])
-    debug = false;
-%     if debug
-%         imshow(bw3);
+
     if length(badsizes) == 1
         disp(['Size: ',num2str(badsizes(1))])
         if lastTime == badsizes(1)
@@ -126,50 +105,11 @@ while ~allRegionsSorted && (counter < 100)
         end
         lastTime = badsizes(1);
     end
-%     end
 end
 
 % Remove small areas again
 excludeArea = round(lowerSizeThreshold * MPP * lowerSizeThreshold * MPP);
 bw3 = bwareaopen(bw3, excludeArea);
-
-%
-% % For visualising
-% imshow(bw3)
-% hold on
-%
-% phi = linspace(0,2*pi,50);
-% cosphi = cos(phi);
-% sinphi = sin(phi);
-%
-% for k = 1:length(s)
-%     xbar = s(k).Centroid(1);
-%     ybar = s(k).Centroid(2);
-%
-%     a = s(k).MajorAxisLength/2;
-%     b = s(k).MinorAxisLength/2;
-%
-%     theta = pi*s(k).Orientation/180;
-%     R = [ cos(theta)   sin(theta)
-%          -sin(theta)   cos(theta)];
-%
-%     xy = [a*cosphi; b*sinphi];
-%     xy = R*xy;
-%
-%     x = xy(1,:) + xbar;
-%     y = xy(2,:) + ybar;
-%
-%     plot(x,y,'r','LineWidth',2);
-%
-%     % Minor axes
-%     angle = theta;
-%     plot([xbar-b*sin(angle),xbar+b*sin(angle)],[ybar-b*cos(angle),ybar+b*cos(angle)],'g')
-%
-% end
-% hold off
-%
-
-
 
 s = regionprops(bw3,'centroid');
 centroids = cat(1,s.Centroid);

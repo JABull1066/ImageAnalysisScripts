@@ -5,10 +5,10 @@
 % classifier to identify cells. Finally, approximate cell centres are
 % identified via a modified watershedding alogirthm.
 
-pathToImage = 'path/goes/here/image.tif';
+pathToImage = 'ExampleTif_CD68.tif';
 pathToClassifier = 'Classifiers/ExampleClassifierCD68.mat';
 
-MPP = 0.882;
+micronsPerPixel = 0.882;
 
 cellDiameterRangeInMicrons = [8,21];
 
@@ -25,7 +25,7 @@ superpixelColourSpaceWeightingParameter = 20; % Parameter
 immuneStainThreshold = 0;
 mask = scores(:,:)>immuneStainThreshold;
 
-[ abw2, immuneCentroids ] = IdentifyCellsViaWatershed_DependentOnSize( mask, img, MPP,cellDiameterRangeInMicrons);
+[ abw2, immuneCentroids ] = IdentifyCellsViaWatershed_DependentOnSize( mask, img, micronsPerPixel,cellDiameterRangeInMicrons);
 
 imshow(img)
 hold on
